@@ -1,0 +1,5 @@
+if(ENABLE_RT)
+add_library(ECNic STATIC ecnic_rt.cpp)
+else()
+add_library(ECNic STATIC ecnic.cpp)
+endif()

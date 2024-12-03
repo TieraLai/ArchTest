@@ -38,18 +38,7 @@ message("CMAKE_EXE_LINKER_FLAGS : ${CMAKE_EXE_LINKER_FLAGS}")
 
 endif()
 
-include_directories(include)
 
-
-if(ENABLE_RT)
-add_library(ECNic STATIC src/ecnic_rt.cpp)
-add_library(ECM STATIC src/ecm_rt.cpp)
-else()
-add_library(ECNic STATIC src/ecnic.cpp)
-add_library(ECM STATIC src/ecm.cpp)
-endif()
-
-add_executable(User src/user.cpp)
-
-target_link_libraries(ECM ECNic pthread)
-target_link_libraries(User ECM)
+add_subdirectory(PF_NexRTOS)
+add_subdirectory(Ecm)
+add_subdirectory(User)
