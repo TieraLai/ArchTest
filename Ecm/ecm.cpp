@@ -64,6 +64,9 @@ void scanLoop()
 
 void startECM()
 {
+    printStr(100, "DeviceSearch Start");
+    DeviceSearch();
+
     std::thread(scanLoop).detach();
 }
 
