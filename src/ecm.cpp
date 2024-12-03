@@ -5,33 +5,65 @@
 #include <chrono>
 #include <functional>
 #include <iostream>
-
+#include <iomanip>
 NEC_RtCyclicCallback callbackFunc;
 
-// Xenomai task
-// RT_TASK ecmTaskHandle;
+static void printStr(int index, const char *str)
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm now_tm = *std::localtime(&now_time_t);
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000000;
 
-void registerCallback(NEC_RtCyclicCallback cb){
+    std::cout << "["
+              << std::put_time(&now_tm, "%H:%M:%S") << ":"
+              << std::setw(6) << milliseconds
+              << "](" << index << "): "
+              << str << std::endl;
+}
+
+static void printCurrentTime(int index)
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm now_tm = *std::localtime(&now_time_t);
+    auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000000;
+
+    std::cout << "["
+              << std::put_time(&now_tm, "%H:%M:%S") << ":"
+              << std::setw(6) << milliseconds
+              << "](" << index << "): ";
+}
+
+void registerCallback(NEC_RtCyclicCallback cb)
+{
     callbackFunc = cb;
 }
 
-void scanLoop() {
-    while (true) {
-        std::cout << "Start task : \n"<< std::endl;
-        std::cout << "Task name: ScanTask\n"<< std::endl;
-        auto regs = scanPCI();        
-        for (int reg : regs) {
+void scanLoop()
+{
+
+    printStr(100, "Task:scanLoop Start");
+    while (true)
+    {
+        printStr(101, "Start task , Task name: ScanTask");
+        auto regs = scanPCI();
+        for (int reg : regs)
+        {
+            printCurrentTime(199);
             int value = readRegister(reg);
-            if (callbackFunc) {
+            if (callbackFunc)
+            {
                 callbackFunc(value);
             }
         }
-        std::cout << "End task. \n\n"<< std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // 模拟周期性扫描
+        printStr(102, "End task.");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
-void startECM() 
+void startECM()
 {
-    std::thread(scanLoop).detach(); // 启动周期性扫描线程
+    std::thread(scanLoop).detach();
 }
+

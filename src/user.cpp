@@ -38,7 +38,8 @@ int main()
     startECM();
     while (true)
     {
-        std::this_thread::sleep_for(std::chrono::seconds(5)); // 模拟用户程序持续运行
+        std::this_thread::sleep_for(std::chrono::seconds(5)); 
     }
     return 0;
 }
+
