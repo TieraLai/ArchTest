@@ -84,19 +84,19 @@ static void mappingtest(char *resource_path)
     printf("PCI BAR0 = 0x%04X\n", *((unsigned short *)ptr));
 
     // 寫入和讀取測試
-    uint32_t val = read32(ptr, 0);
-    uint32_t new_val = 0x0001;
-    printf("Read back value at offset 0: 0x%08X\n", read32(ptr, 0));
-    printf("Read back value at offset 4: 0x%08X\n", read32(ptr, 1));
-    printf("Read back value at offset 8: 0x%08X\n", read32(ptr, 2));
+    uint64_t val = read64(ptr, 0);
+    uint64_t new_val = val+1;
+    printf("Read back value at offset 0: 0x%08lX\n", read64(ptr, 0));
+    printf("Read back value at offset 4: 0x%08lX\n", read64(ptr, 1));
+    printf("Read back value at offset 8: 0x%08lX\n", read64(ptr, 2));
 
     // Step 1: 寫入示範數據
-    write32(ptr, 0, new_val);
-    printf("Written 0x%08X to BAR0 offset 0.\n", new_val);
+    write64(ptr, 0, new_val);
+    printf("Written 0x%08lX to BAR0 offset 0.\n", new_val);
 
     // Step 2: 驗證讀取
-    uint32_t read_val0 = read32(ptr, 0);
-    printf("Read back value at offset 0: 0x%08X\n", read_val0);
+    uint64_t read_val0 = read64(ptr, 0);
+    printf("Read back value at offset 0: 0x%08lX\n", read_val0);
 
     // 驗證寫入是否正確
     if (read_val0 == new_val)
@@ -108,9 +108,9 @@ static void mappingtest(char *resource_path)
         printf("Data verification failed!\n");
     }
 
-    write32(ptr, 0, val);
-    printf("Written 0x%08X to BAR0 offset 0.\n", val);
-    printf("Read back value at offset 0: 0x%08X\n", read32(ptr, 0));
+    write64(ptr, 0, val);
+    printf("Written 0x%08lX to BAR0 offset 0.\n", val);
+    printf("Read back value at offset 0: 0x%08lX\n", read64(ptr, 0));
 
     // 解除映射
     munmap(ptr, getpagesize());
@@ -143,7 +143,7 @@ static void *mapping(char *resource_path)
     printf("PCI Memory mapped to user space at address %p.\n", ptr);
     fflush(stdout);
 
-    printf("PCI BAR0 = 0x%04X\n", *((unsigned short *)ptr));
+    printf("PCI BAR0 = 0x%08X\n", *((unsigned int *)ptr));
     close(fd);
     return ptr;
 }
@@ -153,10 +153,10 @@ static void readwriteTest(void *ptr)
     printf("\nRead/Write Test.\n");
     // 寫入和讀取測試
     uint32_t val = read32(ptr, 0);
-    uint32_t new_val = 0x0001;
+    uint32_t new_val = 0x001C0001;
     printf("Read back value at offset 0: 0x%08X\n", read32(ptr, 0));
-    printf("Read back value at offset 4: 0x%08X\n", read32(ptr, 1));
-    printf("Read back value at offset 8: 0x%08X\n", read32(ptr, 2));
+    printf("Read back value at offset 1: 0x%08X\n", read32(ptr, 1));
+    printf("Read back value at offset 2: 0x%08X\n", read32(ptr, 2));
 
     // Step 1: 寫入示範數據
     write32(ptr, 0, new_val);
@@ -213,12 +213,20 @@ int DeviceSearch()
             printf("\n");
         }
     }
+    std::vector<void *> bar0;
 
     for (int i = 0; i < sysfs_path.size(); i++)
     {
-        void *bar0 = mapping((char *)sysfs_path[i].c_str());
-        readwriteTest(bar0);
-        munmap(bar0, getpagesize()); // 解除映射
+        // mappingtest((char *)sysfs_path[i].c_str());
+        // void *bar0=mapping((char *)sysfs_path[i].c_str());
+        bar0.push_back(mapping((char *)sysfs_path[i].c_str()));
+        readwriteTest(bar0[i]);
+        // munmap(bar0, getpagesize()); // 解除映射
+    }
+
+    for (int i = 0; i < sysfs_path.size(); i++)
+    {
+        munmap(bar0[i], getpagesize()); // 解除映射
     }
     printf("\n");
     return 0;
