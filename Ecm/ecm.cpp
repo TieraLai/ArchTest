@@ -47,11 +47,14 @@ void scanLoop()
     while (true)
     {
         printStr(101, "Start task , Task name: ScanTask");
-        auto regs = scanPCI();
-        for (int reg : regs)
+
+        int *reg = scanPCI(); // 获取设备 ID 数组
+
+        // 遍历 PCI 设备并调用回调函数
+        for (int i = 0; i < 3; i++)
         {
             printCurrentTime(199);
-            int value = readRegister(reg);
+            int value = readRegister(reg[i]);
             if (callbackFunc)
             {
                 callbackFunc(value);
@@ -67,6 +70,5 @@ void startECM()
     printStr(100, "DeviceSearch Start");
     DeviceSearch();
 
-    std::thread(scanLoop).detach();
+    // std::thread(scanLoop).detach();
 }
-

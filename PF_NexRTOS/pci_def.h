@@ -121,7 +121,8 @@ typedef enum _INTERFACE_TYPE {
       UCHAR InterruptPin;                       \
       USHORT BridgeControl;                     \
     } type2;                                    \
-  } u;
+  } u;                                          \
+  ULONG domain;/* PCI domain */
 
 #ifdef __cplusplus
 extern "C" {

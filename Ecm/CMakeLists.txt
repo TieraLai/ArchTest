@@ -1,7 +1,7 @@
 if(ENABLE_RT)
-add_library(ECM STATIC ecm_rt.cpp)
+add_library(ECM SHARED ecm_rt.cpp)
 else()
-add_library(ECM STATIC ecm.cpp)
+add_library(ECM SHARED ecm.cpp)
 endif()
 
 target_link_libraries(ECM ECNic pthread)

@@ -1,4 +1,5 @@
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(ENABLE_RT)
 add_library(ECNic STATIC ecnic_rt.cpp)
