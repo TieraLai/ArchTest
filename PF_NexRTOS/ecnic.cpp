@@ -591,7 +591,6 @@ BOOL RtUnmapMemory(PVOID pVirtualAddress)
 {
     return munmap(pVirtualAddress, getpagesize()) == 0 ? TRUE : FALSE;
 }
-
 #define PCI_DISABLE_INTERRUPT (0x0400)
 #define TX_DESC_RING_SIZE 32 // 发送描述符环的大小
 
@@ -658,9 +657,10 @@ int check_tx_status(int idx)
         return 0;
     }
 }
-#define TDT  0x3818  // Transmit Descriptor Tail
-#define TDH  0x3810  // Transmit Descriptor Head
-void check_tx_ring_status(void *bar0) {
+#define TDT 0x3818 // Transmit Descriptor Tail
+#define TDH 0x3810 // Transmit Descriptor Head
+void check_tx_ring_status(void *bar0)
+{
     volatile uint32_t *regs = (volatile uint32_t *)bar0;
     uint32_t tdh = regs[TDH / 4]; // 读取发送队列的头指针
     uint32_t tdt = regs[TDT / 4]; // 读取发送队列的尾指针
@@ -668,12 +668,158 @@ void check_tx_ring_status(void *bar0) {
     printf("Transmit Descriptor Head (TDH): %u\n", tdh);
     printf("Transmit Descriptor Tail (TDT): %u\n", tdt);
 
-    if (tdh == tdt) {
+    if (tdh == tdt)
+    {
         printf("All descriptors processed. Transmit queue is empty.\n");
-    } else {
+    }
+    else
+    {
         printf("Transmit queue still in progress.\n");
     }
 }
+
+// OS.h
+#define LENGTH (2 * 1024 * 1024)
+#ifndef MAP_HUGETLB
+#define MAP_HUGETLB 0x40000 /* arch specific */
+#endif
+PVOID RtAllocateContiguousMemory(ULONG Length, LARGE_INTEGER PhysicalAddress)
+{
+    void *addr;
+
+    // 使用 mmap 分配 HugePages 內存
+    addr = mmap(NULL, LENGTH, PROT_READ | PROT_WRITE,
+                MAP_HUGETLB | MAP_ANONYMOUS| MAP_PRIVATE, -1, 0);
+
+    if (addr == MAP_FAILED)
+    {
+        perror("mmap failed");
+        return NULL;
+    }
+
+    return addr;
+}
+
+BOOL RtFreeContiguousMemory(PVOID pVirtualAddress)
+{
+    return munmap(pVirtualAddress, LENGTH) == 0 ? TRUE : FALSE;
+}
+
+#define PAGE_SIZE 4096
+LARGE_INTEGER RtGetPhysicalAddress(PVOID pVirtualAddress)
+{
+    LARGE_INTEGER result;
+    result.QuadPart = -1; // or any appropriate value
+
+    unsigned long offset = (unsigned long)pVirtualAddress / PAGE_SIZE * sizeof(unsigned long);
+    unsigned long page_frame;
+
+    // 打开 /proc/self/pagemap 文件
+    int pagemap_fd = open("/proc/self/pagemap", O_RDONLY);
+    if (pagemap_fd == -1)
+    {
+        perror("Failed to open /proc/self/pagemap");
+        return result;
+    }
+
+    // 读取虚拟地址所在页面的信息
+    if (pread(pagemap_fd, &page_frame, sizeof(page_frame), offset) != sizeof(page_frame))
+    {
+        perror("Failed to read from pagemap");
+        close(pagemap_fd);
+        return result;
+    }
+
+    // 关闭 pagemap 文件
+    close(pagemap_fd);
+
+    // 判断页是否有效
+    if (!(page_frame & (1ULL << 63)))
+    {
+        fprintf(stderr, "Page is not present in physical memory.\n");
+        return result;
+    }
+
+    // 获取物理页帧地址
+    unsigned long phy_addr = (page_frame & ((1ULL << 55) - 1)) * PAGE_SIZE + ((unsigned long)pVirtualAddress % PAGE_SIZE);
+    result.QuadPart = (LONGLONG)phy_addr;
+    return result;
+}
+
+static void check_bytes(char *addr)
+{
+    printf("First hex is %x\n", *((unsigned int *)addr));
+}
+
+static void write_bytes(char *addr)
+{
+    unsigned long i;
+
+    for (i = 0; i < LENGTH; i++)
+        *(addr + i) = (char)i;
+}
+
+static void read_bytes(char *addr)
+{
+    unsigned long i;
+
+    check_bytes(addr);
+    for (i = 0; i < LENGTH; i++)
+        if (*(addr + i) != (char)i)
+        {
+            printf("Mismatch at %lu\n", i);
+            break;
+        }
+}
+
+//   // readwriteTest(pCsrBase[0]);
+//     volatile uint32_t *regs = (volatile uint32_t *)pCsrBase;
+
+//     // Intel 82574 寄存器偏移
+// #define CTRL 0x0000   // 控制寄存器
+// #define STATUS 0x0008 // 状态寄存器
+// #define RXCTRL 0x0100 // 接收控制寄存器
+// #define TXCTRL 0x0400 // 发送控制寄存器
+//     // 1. 软复位网卡
+//     regs[CTRL / 4] |= (1 << 26); // 设置 RST 位
+//     usleep(10000);               // 等待复位完成
+
+//     // 2. 检查复位完成
+//     if (regs[CTRL / 4] & (1 << 26))
+//     {
+//         printf("Reset failed.\n");
+//     }
+//     else
+//     {
+//         printf("Reset completed successfully.\n");
+//     }
+
+//     // 3. 启用网卡的接收和发送功能
+//     regs[CTRL / 4] |= (1 << 5) | (1 << 6); // 设置 ASDE 和 SLU 位
+//     regs[RXCTRL / 4] = 0x1;                // 启用接收功能
+//     regs[TXCTRL / 4] = 0x1;                // 启用发送功能
+
+//     printf("NIC initialized successfully.\n");
+
+//     // 初始化发送描述符环
+//     init_tx_desc_ring(pCsrBase);
+
+//     // 发送一个简单的示例数据包
+//     uint8_t packet[] = "Hello, Network!";
+//     send_packet(pCsrBase, packet, sizeof(packet) - 1);
+
+// // 等待发送完成
+//     // int idx = 0;
+//     while (1) {
+//         if(check_tx_status(0))
+//         {
+//             break;
+//         }
+//         usleep(1000); // 每 1 毫秒检查一次状态
+//     }
+//  // 检查发送队列状态
+//     // check_tx_ring_status(pCsrBase);
+
 int DeviceSearch_test()
 {
     MyPCIData_T pMyPciData;
@@ -787,53 +933,29 @@ int DeviceSearch_test()
         return 0;
     }
 
-    // readwriteTest(pCsrBase[0]);
-    volatile uint32_t *regs = (volatile uint32_t *)pCsrBase;
+    // U32_T NumTxDesc = 32;
+    // U32_T NumRxDesc = 16;
+    // U32_T BufferSize = 2048; // Default 2048 Byte
+    // U32_T dwBlock;
+    // // Allocate memory for packet buffers
+    // dwBlock = NumTxDesc + NumRxDesc;
+    // dwBlock *= BufferSize;
 
-    // Intel 82574 寄存器偏移
-#define CTRL 0x0000   // 控制寄存器
-#define STATUS 0x0008 // 状态寄存器
-#define RXCTRL 0x0100 // 接收控制寄存器
-#define TXCTRL 0x0400 // 发送控制寄存器
-    // 1. 软复位网卡
-    regs[CTRL / 4] |= (1 << 26); // 设置 RST 位
-    usleep(10000);               // 等待复位完成
+    // PHYSICAL_ADDRESS physaddrHighest;
+    // physaddrHighest.QuadPart = 0xFFFFFFFF;
+    // U8_T *pbyBlockFragmented = (U8_T *)RtAllocateContiguousMemory(dwBlock, physaddrHighest); // RtAllocateContiguousMemory is not available via RtWinApi
 
-    // 2. 检查复位完成
-    if (regs[CTRL / 4] & (1 << 26))
-    {
-        printf("Reset failed.\n");
-    }
-    else
-    {
-        printf("Reset completed successfully.\n");
-    }
+    // printf("Returned address is %p\n", pbyBlockFragmented);
+    // check_bytes((char *)pbyBlockFragmented);
+    // write_bytes((char *)pbyBlockFragmented);
+    // read_bytes((char *)pbyBlockFragmented);
+    // PHYSICAL_ADDRESS physaddrTo;
+	// physaddrTo = RtGetPhysicalAddress(pbyBlockFragmented); // RtGetPhysicalAddress is not available via RtWinApi
+    // printf("Returned address is = 0x%08lx\n", physaddrTo.LowPart);
+    // printf("Returned address is = 0x%08lx\n", physaddrTo.HighPart);
 
-    // 3. 启用网卡的接收和发送功能
-    regs[CTRL / 4] |= (1 << 5) | (1 << 6); // 设置 ASDE 和 SLU 位
-    regs[RXCTRL / 4] = 0x1;                // 启用接收功能
-    regs[TXCTRL / 4] = 0x1;                // 启用发送功能
 
-    printf("NIC initialized successfully.\n");
-
-    // 初始化发送描述符环
-    init_tx_desc_ring(pCsrBase);
-
-    // 发送一个简单的示例数据包
-    uint8_t packet[] = "Hello, Network!";
-    send_packet(pCsrBase, packet, sizeof(packet) - 1);
-
-// 等待发送完成
-    // int idx = 0;
-    while (1) {
-        if(check_tx_status(0))
-        {
-            break;
-        }
-        usleep(1000); // 每 1 毫秒检查一次状态
-    }
- // 检查发送队列状态
-    // check_tx_ring_status(pCsrBase);
+    // RtFreeContiguousMemory(pbyBlockFragmented);
     RtUnmapMemory(pCsrBase);
 
     return 1;
