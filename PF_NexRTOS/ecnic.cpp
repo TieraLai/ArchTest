@@ -452,9 +452,10 @@ PVOID RtMapMemory(ULONG BusNumber, ULONG SlotNumber, PVOID pBuffer)
     int fd;
     if ((fd = open(resource_path, O_RDWR | O_SYNC)) == -1)
     {
+        printf("open failed\n");
+        fflush(stdout);
         return NULL;
     }
-    fflush(stdout);
 
     unsigned int map_size;
     struct stat st;
@@ -463,12 +464,12 @@ PVOID RtMapMemory(ULONG BusNumber, ULONG SlotNumber, PVOID pBuffer)
     void *ptr = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // 131072 map size = 128KB (131072 bytes) = 32 * 4096 bytes
     if (ptr == MAP_FAILED)
     {
+        printf("mmap failed\n");
+        fflush(stdout);
         close(fd);
         return NULL;
     }
-    fflush(stdout);
     close(fd);
-
     printf("PCI Memory mapped to user space at address %p.\n", ptr);
     printf("PCI BAR0 = 0x%08X\n", *((unsigned int *)ptr));
 
@@ -827,9 +828,9 @@ int DeviceSearch_test()
     ULONG bytesWritten;
 
     // 初始化設備位置
-    pMyPciData.busNumber = 0;
+    pMyPciData.busNumber = 1;
     pMyPciData.slotNumber.u.bits.Reserved = 0;
-    pMyPciData.slotNumber.u.bits.DeviceNumber = 3;
+    pMyPciData.slotNumber.u.bits.DeviceNumber = 0;
     pMyPciData.slotNumber.u.bits.FunctionNumber = 0;
 
     // todo : implement the function RtGetBusDataByOffset
@@ -963,7 +964,7 @@ int DeviceSearch_test()
 
 int DeviceSearch()
 {
-    // DeviceSearch_printAll();
+    //DeviceSearch_printAll();
     DeviceSearch_test();
     return 1;
 }

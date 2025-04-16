@@ -4,7 +4,7 @@ project(PCI_Scanner VERSION 1.16.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-option(ENABLE_RT "Enable Real Time." OFF)
+option(ENABLE_RT "Enable Real Time." ON)
 
 if(ENABLE_RT)
  # 設置 Xenomai 的安裝目錄，根據你的安裝路徑修改

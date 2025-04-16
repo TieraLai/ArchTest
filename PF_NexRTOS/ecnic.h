@@ -18,8 +18,8 @@ extern "C" {
 }
 #endif
 
-// std::vector<int> scanPCI();
-int* scanPCI();
+std::vector<int> scanPCI();
+//int* scanPCI();
 int readRegister(int reg);
 void writeRegister(int reg, int value);
 int DeviceSearch();

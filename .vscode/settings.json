@@ -51,6 +51,7 @@
         "typeinfo": "cpp",
         "cstring": "cpp",
         "cinttypes": "cpp",
-        "cerrno": "cpp"
+        "cerrno": "cpp",
+        "ecm.h": "c"
     }
 }
